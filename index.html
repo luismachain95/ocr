@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR</title>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script>
+
+    <style>
+        body {
+            background-color: #f4f4f4; 
+            margin: 0;
+            padding: 0;
+        }
+        .row {
+            width: 1200px;
+            margin: 0 auto;
+            display: flex;
+        }
+        .col {
+            margin: 0 5px;
+        }
+
+        .selectWrapper {
+            display: inline-block;
+        }
+
+        canvas{
+            border: 1px solid red;
+            position: absolute;
+        }
+        #canvasWrapper{
+            position:relative;
+            width: 602px;
+            height: 602px;
+        }
+
+        #result span {
+            border: 1px solid green;
+            padding: 5px 10px;
+            font-size: 18px;
+            font-family: sans-serif;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .loader {
+            border: 16px solid #b1b1b1; /* Light grey */
+            border-top: 16px solid #191d20; /* Blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="row">
+        <div class="col">
+            <div id="canvasWrapper">
+                <canvas id="overlay" width=600 height=600></canvas>
+                <canvas id="canvas" width=600 height=600></canvas>
+            </div>
+            <h4>Crea los rectangulos de lectura con el mouse.</h4>
+        </div>
+        <div class="col">
+            <fieldset class="selectWrapper">
+                <legend>Seleccione Imagen</legend>
+                <input type="file" id="image"><br>
+            </fieldset>
+            <h3>Resultado</h3>
+            <div id="loader" class="loader"></div>
+            <div id="logger">
+            </div>
+            <div id="result">
+            </div>
+        </div>
+    </div>
+    
+    
+
+    <script lang="script/javascript">
+
+        var result = document.getElementById("result");
+        var logger = document.getElementById("logger");
+        var loader = document.getElementById("loader");
+        loader.style.display = 'none';
+    
+        // get references to the canvas and context
+        var image = document.getElementById("image");
+        var canvasWrapper = document.getElementById("canvasWrapper");
+        var canvas = document.getElementById("canvas");
+        var overlay = document.getElementById("overlay");
+        var ctx = canvas.getContext("2d");
+        var ctxo = overlay.getContext("2d");
+
+        // style the context
+        ctx.strokeStyle = "red"; //Rectangulo actual
+        ctx.lineWidth = 1;
+        ctxo.strokeStyle = "blue"; //Viejos rectangulos
+        ctxo.lineWidth = 1;
+
+        // calculate where the canvas is on the window
+        // (used to help calculate mouseX/mouseY)
+        var canvasOffset = canvas.getBoundingClientRect();
+        var offsetX = canvasOffset.left;
+        var offsetY = canvasOffset.top;
+        var scrollX = canvas.scrollLeft;
+        var scrollY = canvas.scrollTop;
+
+        // this flage is true when the user is dragging the mouse
+        var isDown = false;
+
+        // these vars will hold the starting mouse position
+        var startX;
+        var startY;
+
+        var prevStartX = 0;
+        var prevStartY = 0;
+
+        var prevWidth  = 0;
+        var prevHeight = 0;
+
+
+        function recognizeImage() {
+            const { createWorker } = Tesseract;
+            (async () => {
+                
+                if (image.files[0]) {
+                    const worker = await createWorker({
+                    logger: m => {
+                        
+                        /* var span = document.createElement('p');
+                        span.innerText = m.status;
+                        logger.appendChild(span) */
+                
+                        loader.style.display = 'block';
+
+                        console.log(m)
+                    }, // Add logger here
+                });
+                await worker.loadLanguage('eng+spa');
+                await worker.initialize('eng+spa');
+
+                    const { data: { text } } = await worker.recognize(image.files[0], {
+                        rectangle: { left: prevStartX, top: prevStartY, width: prevWidth, height: prevHeight },
+                    });
+
+                    var span = document.createElement('span');
+                    span.innerText = text;
+                    
+                    logger.innerHTML = "";
+                    result.appendChild(span)
+                    loader.style.display = 'none';
+                } else {
+                    var span = document.createElement('span');
+                    span.innerText = "No hay imagen para detectar!, selecciona una imagen.";
+                    
+                    logger.innerHTML = "";
+                    result.appendChild(span);
+                }
+                
+
+            })();
+        }
+
+        function handleMouseDown(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // save the starting x/y of the rectangle
+            startX = parseInt(e.clientX - offsetX);
+            startY = parseInt(e.clientY - offsetY);
+
+            // set a flag indicating the drag has begun
+            isDown = true;
+        }
+
+        function handleMouseUp(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // the drag is over, clear the dragging flag
+            isDown = false;
+            ctxo.strokeRect(prevStartX, prevStartY, prevWidth, prevHeight);
+
+            console.log({ top: prevStartX, letf: prevStartY, width: prevWidth, height: prevHeight });
+
+
+            recognizeImage();
+            
+        }
+
+        function handleMouseOut(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // the drag is over, clear the dragging flag
+            isDown = false;
+        }
+
+        function handleMouseMove(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // if we're not dragging, just return
+            if (!isDown) {
+                return;
+            }
+
+            // get the current mouse position
+            mouseX = parseInt(e.clientX - offsetX);
+            mouseY = parseInt(e.clientY - offsetY);
+
+            // Put your mousemove stuff here
+
+            
+
+            // calculate the rectangle width/height based
+            // on starting vs current mouse position
+            var width = mouseX - startX;
+            var height = mouseY - startY;
+
+                // clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // draw a new rect from the start position 
+            // to the current mouse position
+            ctx.strokeRect(startX, startY, width, height);
+            
+                prevStartX = startX;
+                prevStartY = startY;
+
+                prevWidth  = width;
+                prevHeight = height;
+        }
+
+        // listen for mouse events
+        document.getElementById("canvas").addEventListener("mousedown", function (e) {
+            handleMouseDown(e);
+        });
+        document.getElementById("canvas").addEventListener("mousemove", function (e) {
+            handleMouseMove(e);
+        });
+        document.getElementById("canvas").addEventListener("mouseup", function (e) {
+            handleMouseUp(e);
+        });
+
+        document.getElementById("canvas").addEventListener("mouseout", function (e) {
+            handleMouseOut(e);
+        });
+
+        document.getElementById("image").addEventListener("change", (event) => {
+            canvasWrapper.style.background = 'no-repeat url(' + URL.createObjectURL(image.files[0]) + ')';
+        })
+    </script>
+
+</body>
+</html>
