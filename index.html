@@ -7,26 +7,58 @@
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script>
 
     <style>
+        
         body {
-            background-color: #f4f4f4; 
             margin: 0;
             padding: 0;
-        }
-        .row {
-            width: 1200px;
-            margin: 0 auto;
-            display: flex;
-        }
-        .col {
-            margin: 0 5px;
+            background: rgb(111,104,227);
+            background: linear-gradient(52deg, rgba(111,104,227,1) 0%, rgba(97,97,219,1) 18%, rgba(80,225,255,1) 100%);
         }
 
+        .wrapper {
+            width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            padding: 10px 20px;
+            background-color: #fff;
+        }
+
+        header .wrapper {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        header .logo {
+            width: 70px;
+            height: 40px;
+        }
+
+        header .github {
+            width: 36px;
+            height: 36px;
+        }
+
+        main {
+            margin-top: 20px;
+        }
+
+        main .content {
+            background-color: #fff;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-around;
+            padding-top: 40px;
+        }
+
+       
         .selectWrapper {
             display: inline-block;
         }
 
         canvas{
-            border: 1px solid red;
+            border: 3px dashed #ddd;
             position: absolute;
         }
         #canvasWrapper{
@@ -60,28 +92,42 @@
     </style>
 </head>
 <body>
-    
-    <div class="row">
-        <div class="col">
-            <div id="canvasWrapper">
-                <canvas id="overlay" width=600 height=600></canvas>
-                <canvas id="canvas" width=600 height=600></canvas>
-            </div>
-            <h4>Crea los rectangulos de lectura con el mouse.</h4>
+    <header>
+        <div class="wrapper">
+            <img class="logo" src="assets/logo.jpg"/>
+            <a href="">
+                <img class="github" src="assets/github.png"/>
+            </a>
         </div>
-        <div class="col">
-            <fieldset class="selectWrapper">
-                <legend>Seleccione Imagen</legend>
-                <input type="file" id="image"><br>
-            </fieldset>
-            <h3>Resultado</h3>
-            <div id="loader" class="loader"></div>
-            <div id="logger">
-            </div>
-            <div id="result">
+    </header>
+    <main>
+        <div class="wrapper">
+            <div class="content">
+
+                <div class="left">
+                    <div id="canvasWrapper">
+                        <canvas id="overlay" width=600 height=600></canvas>
+                        <canvas id="canvas" width=600 height=600></canvas>
+                    </div>
+                    <h4>Crea los rectangulos de lectura con el mouse.</h4>
+                </div>
+                
+                <div class="right">
+                    <fieldset class="selectWrapper">
+                        <legend>Seleccione Imagen</legend>
+                        <input type="file" id="image"><br>
+                    </fieldset>
+                    <h3>Resultado</h3>
+                    <div id="loader" class="loader"></div>
+                    <div id="logger">
+                    </div>
+                    <div id="result">
+                    </div>
+                </div>
+                
             </div>
         </div>
-    </div>
+    </main>
     
     
 
@@ -188,12 +234,19 @@
 
             // the drag is over, clear the dragging flag
             isDown = false;
-            ctxo.strokeRect(prevStartX, prevStartY, prevWidth, prevHeight);
 
             console.log({ top: prevStartX, letf: prevStartY, width: prevWidth, height: prevHeight });
 
 
-            recognizeImage();
+            if (prevWidth > 0 && prevHeight > 0) {
+                ctxo.strokeRect(prevStartX, prevStartY, prevWidth, prevHeight);
+                recognizeImage();
+            } else {
+                var span = document.createElement('span');
+                span.innerText = "No es un rectangulo valido, arrastre el mouse hacia abajo y a la derecha.";
+                logger.innerHTML = "";
+                result.appendChild(span);
+            }
             
         }
 
